@@ -1,0 +1,121 @@
+1. Project Setup
+
+Create a simple web development project:
+Create it on bash: 
+mkdir WebProject , cd WebProject
+WebProject/
+ ├── index.html
+ ├── Jenkinsfile
+ └── README.md
+
+index.html:
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My CI/CD Web App</title>
+</head>
+<body>
+    <h1>Welcome to My Web App</h1>
+    <p>This page is deployed through Jenkins CI/CD pipeline!</p>
+</body>
+</html>
+
+
+Jenkinsfile:
+pipeline {
+    agent any
+
+    environment {
+        DEPLOY_DIR = "C:/web-deploy"
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Anisha0903/WebProject.git'
+            }
+        }
+
+        stage('Build / Test') {
+            steps {
+                echo "Static site – no build or tests required."
+            }
+        }
+
+        stage('Deploy to Local Server') {
+            steps {
+                echo "Deploying website to local server directory..."
+
+                script {
+                    bat "if not exist ${DEPLOY_DIR} mkdir ${DEPLOY_DIR}"
+                    bat "del /Q ${DEPLOY_DIR}\\*"
+                    bat "xcopy * ${DEPLOY_DIR} /E /H /C /Y"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Deployment successful!"
+            echo "You can serve locally using:"
+            echo "python -m http.server 8000 --directory C:/web-deploy"
+        }
+        failure {
+            echo "Pipeline failed!"
+        }
+    }
+}
+
+Initialize Git, commit, and push to GitHub (create remote repo on GitHub first):
+
+git init
+git add .
+git commit -m "Initial commit: web page + Jenkinsfile"
+git branch -M main
+git remote add origin https://github.com/<your-username>/WebProject.git
+git push -u origin main
+
+Run Jenkins as a user using the WAR file (works on Windows and Linux):
+Download jenkins.war (if not already).
+From the folder with jenkins.war, run: java -jar jenkins.war --httpPort=8080
+
+Open http://localhost:8080 and follow initial setup:
+Use the initial admin password printed in terminal.
+Install suggested plugins.
+Create an admin user.
+
+Create Jenkins Pipeline job (GUI)
+Jenkins → New Item → enter name (e.g., WebProject-CI-CD) → choose Pipeline → OK.
+Under General, optional settings (Discard old builds, Do not allow concurrent builds).
+Pipeline section:
+Definition: Pipeline script from SCM
+SCM: Git
+Repository URL: https://github.com/<your-username>/WebProject.git
+Branch Specifier: */main (important if your branch is main)
+Script Path: Jenkinsfile
+Save.
+
+
+
+Configure GitHub Webhook (auto-trigger on push)
+In your GitHub repo → Settings → Webhooks → Add webhook.
+Payload URL: http://<jenkins-host>:8080/github-webhook/
+If Jenkins is local and GitHub can’t reach your machine, webhook won’t trigger. For local testing use manual builds or ngrok to expose Jenkins: ngrok http 8080.
+Content type: application/json
+Which events: Choose Just the push event.
+Save.
+
+Serve the deploy folder locally:
+mkdir -p ~/my-web-deploy   # if not already created
+python -m http.server 8000 --directory ~/my-web-deploy
+
+
+Test the pipeline:
+Make a change to index.html locally.
+git add index.html → git commit -m "Update content" → git push origin main
+GitHub webhook triggers Jenkins (or run Build Now in Jenkins).
+Check Console Output of build for errors.
+After success, open http://localhost:8000 (or configured server URL) and confirm updated content.
+
